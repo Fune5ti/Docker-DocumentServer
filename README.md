@@ -221,6 +221,7 @@ Below is the complete list of parameters that can be set using environment varia
 - **LETS_ENCRYPT_DOMAIN**: Defines the domain for Let's Encrypt certificate.
 - **LETS_ENCRYPT_MAIL**: Defines the domain administrator mail address for Let's Encrypt certificate.
 - **PLUGINS_ENABLED**: Defines whether to enable default plugins. Defaults to `true`.
+- **PLUGINS_MARKETPLACE_ENABLED**: Defines whether to enable default plugins marketplace. Defaults to `true`.
 
 ## Installing ONLYOFFICE Document Server using Docker Compose
 

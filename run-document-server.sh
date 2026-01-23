@@ -33,6 +33,7 @@ CONF_DIR="/etc/${COMPANY_NAME}/documentserver"
 SUPERVISOR_CONF_DIR="/etc/supervisor/conf.d"
 IS_UPGRADE="false"
 PLUGINS_ENABLED=${PLUGINS_ENABLED:-true}
+PLUGINS_MARKETPLACE_ENABLED=${PLUGINS_MARKETPLACE_ENABLED:-true}
 
 ONLYOFFICE_DATA_CONTAINER=${ONLYOFFICE_DATA_CONTAINER:-false}
 ONLYOFFICE_DATA_CONTAINER_HOST=${ONLYOFFICE_DATA_CONTAINER_HOST:-localhost}
@@ -793,7 +794,11 @@ if [ ${ONLYOFFICE_DATA_CONTAINER} != "true" ]; then
 
   update_nginx_settings
   
-  if [ "${PLUGINS_ENABLED}" = "true" ]; then
+  if [ "${PLUGINS_MARKETPLACE_ENABLED}" = "false" ]; then
+    echo -n "Plugins marketplace is disabled. Removing plugins..."
+    rm -rf ${APP_DIR}/sdkjs-plugins/
+    echo Done
+  elif [ "${PLUGINS_ENABLED}" = "true" ]; then
     echo -n Installing plugins, please wait...
     start_process documentserver-pluginsmanager.sh -r false --update=\"${APP_DIR}/sdkjs-plugins/plugin-list-default.json\" >/dev/null
     echo Done
