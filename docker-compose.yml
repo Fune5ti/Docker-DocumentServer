@@ -50,7 +50,8 @@ services:
       retries: 3
       start_period: 10s
       timeout: 10s
-
+    networks:
+      - dokploy-network
   onlyoffice-postgresql:
     container_name: onlyoffice-postgresql
     image: postgres:15
@@ -69,6 +70,11 @@ services:
       retries: 3
       start_period: 10s
       timeout: 10s
+    networks:
+      - dokploy-network
 
 volumes:
   postgresql_data:
+networks:
+  dokploy-network:
+    external: true
