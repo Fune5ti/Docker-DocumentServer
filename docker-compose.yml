@@ -19,6 +19,7 @@ services:
       # - JWT_SECRET=secret
       # - JWT_HEADER=Authorization
       # - JWT_IN_BODY=true
+      - DS_URL=https://docserver.danielpires.cv
     ports:
       - 80
       - 443
