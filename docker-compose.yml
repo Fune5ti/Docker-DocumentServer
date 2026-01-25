@@ -55,8 +55,11 @@ services:
       # Redirect middleware
       - traefik.http.middlewares.onlyoffice-redirect-https.redirectscheme.scheme=https
       - traefik.http.middlewares.onlyoffice-redirect-https.redirectscheme.permanent=true
-      # Headers middleware to forward protocol info
+      # Headers middleware to forward protocol info and fix mixed content
       - traefik.http.middlewares.onlyoffice-headers.headers.customrequestheaders.X-Forwarded-Proto=https
+      - traefik.http.middlewares.onlyoffice-headers.headers.customrequestheaders.X-Forwarded-Host=docserver.danielpires.cv
+      # Fix mixed content: tells browser to upgrade HTTP requests to HTTPS
+      - traefik.http.middlewares.onlyoffice-headers.headers.contentSecurityPolicy=upgrade-insecure-requests
       # Service port
       - traefik.http.services.onlyoffice.loadbalancer.server.port=80
     networks:
