@@ -128,7 +128,6 @@ WOPI_ENABLED=${WOPI_ENABLED:-false}
 ALLOW_META_IP_ADDRESS=${ALLOW_META_IP_ADDRESS:-false}
 ALLOW_PRIVATE_IP_ADDRESS=${ALLOW_PRIVATE_IP_ADDRESS:-false}
 REVERSE_PROXY_HTTPS=${REVERSE_PROXY_HTTPS:-false}
-REVERSE_PROXY_HOST=${REVERSE_PROXY_HOST:-}
 
 GENERATE_FONTS=${GENERATE_FONTS:-true}
 
@@ -665,32 +664,23 @@ update_reverse_proxy_settings(){
     return
   fi
 
-  if [ -z "${REVERSE_PROXY_HOST}" ]; then
-    echo "WARNING: REVERSE_PROXY_HTTPS=true but REVERSE_PROXY_HOST is not set. Skipping reverse proxy config."
-    return
-  fi
-
-  echo "Configuring nginx for HTTPS reverse proxy (host: ${REVERSE_PROXY_HOST})..."
+  echo "Configuring nginx for HTTPS reverse proxy..."
 
   # If ds.conf is a symlink (default when no SSL), convert to regular file for editing
   if [ -L "${NGINX_ONLYOFFICE_CONF}" ]; then
     cp --remove-destination "$(readlink -f "${NGINX_ONLYOFFICE_CONF}")" "${NGINX_ONLYOFFICE_CONF}"
   fi
 
-  # Create sub_filter snippet that rewrites http:// URLs to https:// in response bodies.
-  # This fixes mixed content when the docservice generates absolute URLs with http://
-  mkdir -p /etc/nginx/includes
-  cat > /etc/nginx/includes/reverse-proxy.conf <<EOF
-sub_filter 'http://${REVERSE_PROXY_HOST}' 'https://${REVERSE_PROXY_HOST}';
-sub_filter_once off;
-sub_filter_types application/json text/javascript application/javascript text/html;
-EOF
-
-  # Insert the include directive inside the server block once (after the first listen directive only).
-  # Using awk to avoid inserting multiple times when there are IPv4 and IPv6 listen lines.
-  local tmpfile=$(mktemp)
-  awk '/listen.*80/ && !inserted {print; print "    include /etc/nginx/includes/reverse-proxy.conf;"; inserted=1; next} {print}' \
-    "${NGINX_ONLYOFFICE_CONF}" > "${tmpfile}" && mv "${tmpfile}" "${NGINX_ONLYOFFICE_CONF}"
+  # Fix X-Forwarded-Proto: the internal nginx typically sets
+  # "proxy_set_header X-Forwarded-Proto $scheme" which overrides the HTTPS
+  # value sent by the external reverse proxy (Traefik) with "http".
+  # Replace it to preserve the original header from the reverse proxy.
+  if grep -q 'proxy_set_header X-Forwarded-Proto' "${NGINX_ONLYOFFICE_CONF}"; then
+    sed -i 's|proxy_set_header X-Forwarded-Proto .*|proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;|g' "${NGINX_ONLYOFFICE_CONF}"
+  else
+    # If not present, add it after every proxy_set_header Host line
+    sed -i '/proxy_set_header.*Host/a\        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;' "${NGINX_ONLYOFFICE_CONF}"
+  fi
 }
 
 update_log_settings(){

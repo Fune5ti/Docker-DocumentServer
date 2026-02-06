@@ -22,7 +22,6 @@ services:
       - USE_UNAUTHORIZED_STORAGE=true
       - WOPI_ENABLED=false
       - REVERSE_PROXY_HTTPS=true
-      - REVERSE_PROXY_HOST=docserver.danielpires.cv
     ports:
       - 80
       - 443
@@ -62,7 +61,7 @@ services:
       - traefik.http.middlewares.onlyoffice-headers.headers.customrequestheaders.X-Forwarded-Proto=https
       - traefik.http.middlewares.onlyoffice-headers.headers.customrequestheaders.X-Forwarded-Host=docserver.danielpires.cv
       # Fix mixed content: tells browser to upgrade HTTP requests to HTTPS
-      - traefik.http.middlewares.onlyoffice-headers.headers.contentSecurityPolicy=upgrade-insecure-requests
+      - traefik.http.middlewares.onlyoffice-headers.headers.customresponseheaders.Content-Security-Policy=upgrade-insecure-requests
       # Service port
       - traefik.http.services.onlyoffice.loadbalancer.server.port=80
     networks:
