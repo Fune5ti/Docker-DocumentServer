@@ -128,6 +128,7 @@ WOPI_ENABLED=${WOPI_ENABLED:-false}
 ALLOW_META_IP_ADDRESS=${ALLOW_META_IP_ADDRESS:-false}
 ALLOW_PRIVATE_IP_ADDRESS=${ALLOW_PRIVATE_IP_ADDRESS:-false}
 REVERSE_PROXY_HTTPS=${REVERSE_PROXY_HTTPS:-false}
+REVERSE_PROXY_HOST=${REVERSE_PROXY_HOST:-}
 
 GENERATE_FONTS=${GENERATE_FONTS:-true}
 
@@ -660,21 +661,33 @@ update_nginx_settings(){
 }
 
 update_reverse_proxy_settings(){
-  if [ "${REVERSE_PROXY_HTTPS}" = "true" ]; then
-    # Add map directive to resolve scheme from X-Forwarded-Proto header
-    cat > ${NGINX_CONFD_PATH}/reverse-proxy.conf <<'CONF'
-map $http_x_forwarded_proto $forwarded_scheme {
-    default $http_x_forwarded_proto;
-    ""      $scheme;
-}
-CONF
-
-    # Forward X-Forwarded-Proto and X-Forwarded-Host to the docservice upstream
-    # so it generates correct URLs when behind a TLS-terminating reverse proxy
-    if [ -f "${NGINX_ONLYOFFICE_CONF}" ]; then
-      sed -i '/proxy_set_header\s*Host/a\        proxy_set_header X-Forwarded-Proto $forwarded_scheme;\n        proxy_set_header X-Forwarded-Host $http_host;' "${NGINX_ONLYOFFICE_CONF}"
-    fi
+  if [ "${REVERSE_PROXY_HTTPS}" != "true" ]; then
+    return
   fi
+
+  if [ -z "${REVERSE_PROXY_HOST}" ]; then
+    echo "WARNING: REVERSE_PROXY_HTTPS=true but REVERSE_PROXY_HOST is not set. Skipping reverse proxy config."
+    return
+  fi
+
+  echo "Configuring nginx for HTTPS reverse proxy (host: ${REVERSE_PROXY_HOST})..."
+
+  # If ds.conf is a symlink (default when no SSL), convert to regular file for editing
+  if [ -L "${NGINX_ONLYOFFICE_CONF}" ]; then
+    cp --remove-destination "$(readlink -f "${NGINX_ONLYOFFICE_CONF}")" "${NGINX_ONLYOFFICE_CONF}"
+  fi
+
+  # Create sub_filter snippet that rewrites http:// URLs to https:// in response bodies.
+  # This fixes mixed content when the docservice generates absolute URLs with http://
+  mkdir -p /etc/nginx/includes
+  cat > /etc/nginx/includes/reverse-proxy.conf <<EOF
+sub_filter 'http://${REVERSE_PROXY_HOST}' 'https://${REVERSE_PROXY_HOST}';
+sub_filter_once off;
+sub_filter_types application/json text/javascript application/javascript text/html;
+EOF
+
+  # Insert the include directive inside the server block (after the first listen directive)
+  sed -i '/listen.*80/a\    include /etc/nginx/includes/reverse-proxy.conf;' "${NGINX_ONLYOFFICE_CONF}"
 }
 
 update_log_settings(){

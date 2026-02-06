@@ -22,6 +22,7 @@ services:
       - USE_UNAUTHORIZED_STORAGE=true
       - WOPI_ENABLED=false
       - REVERSE_PROXY_HTTPS=true
+      - REVERSE_PROXY_HOST=docserver.danielpires.cv
     ports:
       - 80
       - 443
