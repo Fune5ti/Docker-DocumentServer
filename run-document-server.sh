@@ -127,6 +127,7 @@ JWT_IN_BODY=${JWT_IN_BODY:-false}
 WOPI_ENABLED=${WOPI_ENABLED:-false}
 ALLOW_META_IP_ADDRESS=${ALLOW_META_IP_ADDRESS:-false}
 ALLOW_PRIVATE_IP_ADDRESS=${ALLOW_PRIVATE_IP_ADDRESS:-false}
+REVERSE_PROXY_HTTPS=${REVERSE_PROXY_HTTPS:-false}
 
 GENERATE_FONTS=${GENERATE_FONTS:-true}
 
@@ -658,6 +659,24 @@ update_nginx_settings(){
   start_process documentserver-update-securelink.sh -s ${SECURE_LINK_SECRET:-$(pwgen -s 20)} -r false
 }
 
+update_reverse_proxy_settings(){
+  if [ "${REVERSE_PROXY_HTTPS}" = "true" ]; then
+    # Add map directive to resolve scheme from X-Forwarded-Proto header
+    cat > ${NGINX_CONFD_PATH}/reverse-proxy.conf <<'CONF'
+map $http_x_forwarded_proto $forwarded_scheme {
+    default $http_x_forwarded_proto;
+    ""      $scheme;
+}
+CONF
+
+    # Forward X-Forwarded-Proto and X-Forwarded-Host to the docservice upstream
+    # so it generates correct URLs when behind a TLS-terminating reverse proxy
+    if [ -f "${NGINX_ONLYOFFICE_CONF}" ]; then
+      sed -i '/proxy_set_header\s*Host/a\        proxy_set_header X-Forwarded-Proto $forwarded_scheme;\n        proxy_set_header X-Forwarded-Host $http_host;' "${NGINX_ONLYOFFICE_CONF}"
+    fi
+  fi
+}
+
 update_log_settings(){
    ${JSON_LOG} -I -e "this.categories.default.level = '${DS_LOG_LEVEL}'"
 }
@@ -791,7 +810,8 @@ if [ ${ONLYOFFICE_DATA_CONTAINER} != "true" ]; then
   fi
 
   update_nginx_settings
-  
+  update_reverse_proxy_settings
+
   if [ "${PLUGINS_ENABLED}" = "true" ]; then
     echo -n Installing plugins, please wait...
     start_process documentserver-pluginsmanager.sh -r false --update=\"${APP_DIR}/sdkjs-plugins/plugin-list-default.json\" >/dev/null

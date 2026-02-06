@@ -20,6 +20,8 @@ services:
       # - JWT_HEADER=Authorization
       # - JWT_IN_BODY=true
       - USE_UNAUTHORIZED_STORAGE=true
+      - WOPI_ENABLED=false
+      - REVERSE_PROXY_HTTPS=true
     ports:
       - 80
       - 443
