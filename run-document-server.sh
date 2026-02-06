@@ -686,8 +686,11 @@ sub_filter_once off;
 sub_filter_types application/json text/javascript application/javascript text/html;
 EOF
 
-  # Insert the include directive inside the server block (after the first listen directive)
-  sed -i '/listen.*80/a\    include /etc/nginx/includes/reverse-proxy.conf;' "${NGINX_ONLYOFFICE_CONF}"
+  # Insert the include directive inside the server block once (after the first listen directive only).
+  # Using awk to avoid inserting multiple times when there are IPv4 and IPv6 listen lines.
+  local tmpfile=$(mktemp)
+  awk '/listen.*80/ && !inserted {print; print "    include /etc/nginx/includes/reverse-proxy.conf;"; inserted=1; next} {print}' \
+    "${NGINX_ONLYOFFICE_CONF}" > "${tmpfile}" && mv "${tmpfile}" "${NGINX_ONLYOFFICE_CONF}"
 }
 
 update_log_settings(){
